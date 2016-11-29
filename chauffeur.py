@@ -4,8 +4,9 @@ Load team chauffeur steering model
 import argparse
 from collections import deque
 
-import rospy
+import cv2
 import numpy as np
+import rospy
 from keras.models import load_model
 
 from steering_node import SteeringNode
@@ -35,7 +36,12 @@ class ChauffeurModel(object):
         steps = deque()
 
         def predict_fn(img):
-            # TODO: should we do cropping and histogram equalization here?
+            # preprocess image to be YUV 320x120 and equalize Y histogram
+            img = cv2.resize(img, (320, 240))
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
+            img = img[120:240, :, :]
+            img[:,:,0] = cv2.equalizeHist(img[:,:,0])
+            img = ((img-(255.0/2))/255.0)
 
             # apply feature extractor
             img = self.encoder.predict_on_batch(img.reshape((1, 120, 320, 3)))
@@ -60,8 +66,8 @@ class ChauffeurModel(object):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Model Runner for team chauffeur')
-    parser.add_argument('cnn_path', type=str, help='Path to cnn encoding model path')
-    parser.add_argument('lstm_path', type=str, help='Path to lstm model path')
+    parser.add_argument('cnn_path', type=str, help='Path to cnn encoding model')
+    parser.add_argument('lstm_path', type=str, help='Path to lstm model')
     args = parser.parse_args()
 
     def make_predictor():
