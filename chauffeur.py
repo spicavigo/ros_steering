@@ -22,8 +22,10 @@ class ChauffeurModel(object):
                  cnn_weights_path,
                  lstm_json_path,
                  lstm_weights_path):
-        self.encoder = self.load_encoder(cnn_json_path, cnn_weights_path)
-        self.lstm = self.load_from_json(lstm_json_path, lstm_weights_path)
+
+        self.cnn = self.load_from_json(cnn_json_path, cnn_weights_path)
+        #self.encoder = self.load_encoder(cnn_json_path, cnn_weights_path)
+        #self.lstm = self.load_from_json(lstm_json_path, lstm_weights_path)
 
         # hardcoded from final submission model
         self.scale = 16.
@@ -43,6 +45,18 @@ class ChauffeurModel(object):
         model = model_from_json(open(json_path, 'r').read())
         model.load_weights(weights_path)
         return model
+
+    def make_cnn_only_predictor(self):
+        def predict_fn(img):
+            img = cv2.resize(img, (320, 240))
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2YUV)
+            img = img[120:240, :, :]
+            img[:,:,0] = cv2.equalizeHist(img[:,:,0])
+            img = ((img-(255.0/2))/255.0)
+
+            return self.cnn.predict_on_batch(img.reshape((1, 120, 320, 3)))[0, 0] / self.scale
+
+        return predict_fn
 
     def make_stateful_predictor(self):
         steps = deque()
@@ -96,7 +110,7 @@ if __name__ == '__main__':
             args.cnn_weights_path,
             args.lstm_json_path,
             args.lstm_weights_path)
-        return model.make_stateful_predictor()
+        return model.make_cnn_only_predictor()
 
     def process(predictor, img):
         return predictor(img)
