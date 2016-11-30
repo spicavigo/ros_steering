@@ -90,12 +90,13 @@ if __name__ == '__main__':
     parser.add_argument('lstm_weights_path', type=str, help='Path to lstm encoding weights')
     args = parser.parse_args()
 
+    model = ChauffeurModel(
+        args.cnn_json_path,
+        args.cnn_weights_path,
+        args.lstm_json_path,
+        args.lstm_weights_path)
+
     def make_predictor():
-        model = ChauffeurModel(
-            args.cnn_json_path,
-            args.cnn_weights_path,
-            args.lstm_json_path,
-            args.lstm_weights_path)
         return model.make_stateful_predictor()
 
     def process(predictor, img):
