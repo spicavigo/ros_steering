@@ -8,6 +8,8 @@ import cv2
 import numpy as np
 import rospy
 from keras.models import load_model
+from keras import metrics
+from keras.models import load_model
 
 from steering_node import SteeringNode
 
@@ -19,7 +21,7 @@ class ChauffeurModel(object):
 
         # hardcoded from final submission model
         self.scale = 16.
-        self.timesteps = 50
+        self.timesteps = 100
 
     def load_encoder(self, cnn_path):
         model = load_model(cnn_path)
@@ -55,7 +57,7 @@ class ChauffeurModel(object):
             steps.popleft()
             steps.append(img)
 
-            timestepped_x = np.empty((1, self.timesteps, 120, 320, 3))
+            timestepped_x = np.empty((1, self.timesteps, img.shape[1]))
             for i, img in enumerate(steps):
                 timestepped_x[0, i] = img
 
@@ -63,6 +65,13 @@ class ChauffeurModel(object):
 
         return predict_fn
 
+
+def rmse(y_true, y_pred):
+    '''Calculates RMSE
+    '''
+    return K.sqrt(K.mean(K.square(y_pred - y_true)))
+
+metrics.rmse = rmse
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Model Runner for team chauffeur')
