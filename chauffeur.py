@@ -8,29 +8,41 @@ from collections import deque
 import cv2
 import numpy as np
 import rospy
-from keras.models import load_model
+from keras import backend as K
 from keras import metrics
 from keras.models import load_model
+from keras.models import model_from_json
 
 from steering_node import SteeringNode
 
 
 class ChauffeurModel(object):
-    def __init__(self, cnn_path, lstm_path):
-        self.encoder = self.load_encoder(cnn_path)
-        self.lstm = load_model(lstm_path)
+    def __init__(self,
+                 cnn_json_path,
+                 cnn_weights_path,
+                 lstm_json_path,
+                 lstm_weights_path):
+        self.encoder = self.load_encoder(cnn_json_path, cnn_weights_path)
+        self.lstm = self.load_from_json(lstm_json_path, lstm_weights_path)
 
         # hardcoded from final submission model
         self.scale = 16.
         self.timesteps = 100
 
-    def load_encoder(self, cnn_path):
-        model = load_model(cnn_path)
-        deep_copy.layers.pop()
-        deep_copy.outputs = [deep_copy.layers[-1].output]
-        deep_copy.layers[-1].outbound_nodes = []
+    def load_encoder(self, cnn_json_path, cnn_weights_path):
+        model = self.load_from_json(cnn_json_path, cnn_weights_path)
+        model.load_weights(cnn_weights_path)
 
-        return deep_copy_model_weights(deep_copy)
+        model.layers.pop()
+        model.outputs = [model.layers[-1].output]
+        model.layers[-1].outbound_nodes = []
+
+        return model
+
+    def load_from_json(self, json_path, weights_path):
+        model = model_from_json(open(json_path, 'r').read())
+        model.load_weights(weights_path)
+        return model
 
     def make_stateful_predictor(self):
         steps = deque()
@@ -63,54 +75,27 @@ class ChauffeurModel(object):
 
         return predict_fn
 
-
-def deep_copy_model_weights(model):
-    """
-    Create a deep copy of a tensorflow model weights.
-
-    @param model - tensorflow model
-    @return - copy of model
-    """
-    _, tmp_path_json = tempfile.mkstemp()
-    _, tmp_path_weights = tempfile.mkstemp()
-    try:
-        # serialize model to JSON
-        model_json = model.to_json()
-        with open(tmp_path_json, "w") as json_file:
-            json_file.write(model_json)
-        # serialize weights to HDF5
-        model.save_weights(tmp_path_weights)
-
-        # load json and create model
-        json_file = open(tmp_path_json, 'r')
-        loaded_model_json = json_file.read()
-        json_file.close()
-        loaded_model = model_from_json(loaded_model_json)
-        # load weights into new model
-        loaded_model.load_weights(tmp_path_weights)
-        return loaded_model
-    finally:
-        os.remove(tmp_path_json)
-        os.remove(tmp_path_weights)
-
-
 def rmse(y_true, y_pred):
     '''Calculates RMSE
     '''
     return K.sqrt(K.mean(K.square(y_pred - y_true)))
 
-
-
 metrics.rmse = rmse
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Model Runner for team chauffeur')
-    parser.add_argument('cnn_path', type=str, help='Path to cnn encoding model')
-    parser.add_argument('lstm_path', type=str, help='Path to lstm model')
+    parser.add_argument('cnn_json_path', type=str, help='Path to cnn encoding json')
+    parser.add_argument('cnn_weights_path', type=str, help='Path to cnn encoding weights')
+    parser.add_argument('lstm_json_path', type=str, help='Path to lstm encoding json')
+    parser.add_argument('lstm_weights_path', type=str, help='Path to lstm encoding weights')
     args = parser.parse_args()
 
     def make_predictor():
-        model = ChauffeurModel(args.cnn_path, args.lstm_path)
+        model = ChauffeurModel(
+            args.cnn_json_path,
+            args.cnn_weights_path,
+            args.lstm_json_path,
+            args.lstm_weights_path)
         return model.make_stateful_predictor()
 
     def process(predictor, img):
