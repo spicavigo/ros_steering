@@ -2,6 +2,7 @@
 Load team chauffeur steering model
 """
 import argparse
+import tempfile
 from collections import deque
 
 import cv2
@@ -25,14 +26,11 @@ class ChauffeurModel(object):
 
     def load_encoder(self, cnn_path):
         model = load_model(cnn_path)
+        deep_copy.layers.pop()
+        deep_copy.outputs = [deep_copy.layers[-1].output]
+        deep_copy.layers[-1].outbound_nodes = []
 
-        # pop off layers until we reach flatten
-        while 'flatten' not in model.layers[-1].name:
-            model.layers.pop()
-            model.outputs = [model.layers[-1].output]
-            model.layers[-1].outbound_nodes = []
-
-        return model
+        return deep_copy_model_weights(deep_copy)
 
     def make_stateful_predictor(self):
         steps = deque()
@@ -66,10 +64,42 @@ class ChauffeurModel(object):
         return predict_fn
 
 
+def deep_copy_model_weights(model):
+    """
+    Create a deep copy of a tensorflow model weights.
+
+    @param model - tensorflow model
+    @return - copy of model
+    """
+    _, tmp_path_json = tempfile.mkstemp()
+    _, tmp_path_weights = tempfile.mkstemp()
+    try:
+        # serialize model to JSON
+        model_json = model.to_json()
+        with open(tmp_path_json, "w") as json_file:
+            json_file.write(model_json)
+        # serialize weights to HDF5
+        model.save_weights(tmp_path_weights)
+
+        # load json and create model
+        json_file = open(tmp_path_json, 'r')
+        loaded_model_json = json_file.read()
+        json_file.close()
+        loaded_model = model_from_json(loaded_model_json)
+        # load weights into new model
+        loaded_model.load_weights(tmp_path_weights)
+        return loaded_model
+    finally:
+        os.remove(tmp_path_json)
+        os.remove(tmp_path_weights)
+
+
 def rmse(y_true, y_pred):
     '''Calculates RMSE
     '''
     return K.sqrt(K.mean(K.square(y_pred - y_true)))
+
+
 
 metrics.rmse = rmse
 
