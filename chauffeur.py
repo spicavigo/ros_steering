@@ -105,6 +105,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     def make_predictor():
+        K.set_learning_phase(0)
         model = ChauffeurModel(
             args.cnn_json_path,
             args.cnn_weights_path,
