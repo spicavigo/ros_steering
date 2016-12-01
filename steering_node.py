@@ -8,7 +8,7 @@ from sensor_msgs.msg import Image
 class SteeringNode(object):
     def __init__(self, get_model_callback, model_callback):
         rospy.init_node('steering_model')
-        self.model = None
+        self.model = get_model_callback()
         self.get_model = get_model_callback
         self.predict = model_callback
         self.img =  None
