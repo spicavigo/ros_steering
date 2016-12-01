@@ -52,7 +52,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Model Runner for team komanda')
     parser.add_argument('metagraph_file', type=str, help='Path to the metagraph file')
     parser.add_argument('checkpoint_dir', type=str, help='Path to the checkpoint dir')
-    parser.add_argument('debug_print', type=bool, help='Debug print of predicted steering commands')
+    parser.add_argument('--debug_print', dest='debug_print', action='store_true', help='Debug print of predicted steering commands')
     args = parser.parse_args()
     def make_predictor():
         model = KomandaModel(
