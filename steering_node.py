@@ -2,6 +2,7 @@ import threading
 import numpy as np
 import rospy
 import cv2
+from cv_bridge import CvBridge
 from dbw_mkz_msgs.msg import SteeringCmd
 from sensor_msgs.msg import Image, CompressedImage
 
@@ -17,6 +18,7 @@ class SteeringNode(object):
                                           self.update_image)
         self.image_sub_compressed = rospy.Subscriber('/center_camera/image_color/compressed', CompressedImage,
                                           self.update_image)
+        self.bridge = CvBridge()
         self.pub = rospy.Publisher('/vehicle/steering_cmd',
                                    SteeringCmd, queue_size=1)
         rospy.Timer(rospy.Duration(.02), self.get_steering)
@@ -24,13 +26,10 @@ class SteeringNode(object):
     def update_image(self, img):
         if hasattr(img, 'format') and 'compressed' in img.format:
             buf = np.ndarray(shape=(1, len(img.data)), dtype=np.uint8, buffer=img.data)
-            img.data = cv2.imdecode(buf, cv2.IMREAD_ANYCOLOR)
-            shape = img.data.shape
+            arr = cv2.imdecode(buf, cv2.IMREAD_ANYCOLOR)
         else:
-            shape = img.height, img.width, 3
-        arr = np.ndarray(shape=shape,
-                         dtype=np.uint8,
-                         buffer=np.array(img.data))[:,:,::-1]
+            arr = self.bridge.imgmsg_to_cv2(img, img.encoding)
+        arr = arr[:,:,::-1] # TODO do we really need it here?
         timestamp = img.header.stamp.to_nsec()
         with self.lock:
             if self.img_timestamp < timestamp:
