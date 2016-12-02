@@ -7,10 +7,8 @@ Author: Ilya Edrenkin, ilya.edrenkin@gmail.com
 """
 
 import argparse
-import tempfile
 from collections import deque
 
-import cv2
 import rospy
 import numpy as np
 import tensorflow as tf
@@ -35,7 +33,7 @@ class KomandaModel(object):
 
     def predict(self, img):
         if len(self.input_images) == 0:
-            self.input_images += [img] * (self.LEFT_CONTEXT + 1)
+            self.input_images += [np.zeros_like(img)] * self.LEFT_CONTEXT + [img]
         else:
             self.input_images.popleft()
             self.input_images.append(img)
