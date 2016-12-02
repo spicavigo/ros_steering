@@ -51,6 +51,8 @@ if __name__ == '__main__':
     parser.add_argument('metagraph_file', type=str, help='Path to the metagraph file')
     parser.add_argument('checkpoint_dir', type=str, help='Path to the checkpoint dir')
     parser.add_argument('--debug_print', dest='debug_print', action='store_true', help='Debug print of predicted steering commands')
+    parser.add_argument('--subscribe_to_compressed', dest='subscribe_to_compressed', action='store_true', help='Use /center_camera/image_color/compressed topic instead of /center_camera/image_color')
+
     args = parser.parse_args()
     def make_predictor():
         model = KomandaModel(
@@ -61,5 +63,5 @@ if __name__ == '__main__':
         steering = predictor(img)
         if args.debug_print: print steering
         return steering
-    node = SteeringNode(make_predictor, process)
+    node = SteeringNode(make_predictor, process, subscribe_to_compressed=args.subscribe_to_compressed)
     rospy.spin()

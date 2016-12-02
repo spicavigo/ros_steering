@@ -7,17 +7,19 @@ from dbw_mkz_msgs.msg import SteeringCmd
 from sensor_msgs.msg import Image, CompressedImage
 
 class SteeringNode(object):
-    def __init__(self, get_model_callback, model_callback):
+    def __init__(self, get_model_callback, model_callback, subscribe_to_compressed=False):
         rospy.init_node('steering_model')
         self.model = get_model_callback()
         self.predict = model_callback
         self.steering = None
         self.img_timestamp = -1
         self.lock = threading.Lock()
-        self.image_sub = rospy.Subscriber('/center_camera/image_color', Image,
-                                          self.update_image)
-        self.image_sub_compressed = rospy.Subscriber('/center_camera/image_color/compressed', CompressedImage,
-                                          self.update_image)
+        if subscribe_to_compressed:
+            self.image_sub = rospy.Subscriber('/center_camera/image_color/compressed', CompressedImage,
+                                              self.update_image)
+        else:
+            self.image_sub = rospy.Subscriber('/center_camera/image_color', Image,
+                                              self.update_image)
         self.bridge = CvBridge()
         self.pub = rospy.Publisher('/vehicle/steering_cmd',
                                    SteeringCmd, queue_size=1)
