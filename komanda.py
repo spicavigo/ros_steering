@@ -7,10 +7,8 @@ Author: Ilya Edrenkin, ilya.edrenkin@gmail.com
 """
 
 import argparse
-import tempfile
 from collections import deque
 
-import cv2
 import rospy
 import numpy as np
 import tensorflow as tf
@@ -35,7 +33,7 @@ class KomandaModel(object):
 
     def predict(self, img):
         if len(self.input_images) == 0:
-            self.input_images += [img] * (self.LEFT_CONTEXT + 1)
+            self.input_images += [np.zeros_like(img)] * self.LEFT_CONTEXT + [img]
         else:
             self.input_images.popleft()
             self.input_images.append(img)
@@ -53,6 +51,8 @@ if __name__ == '__main__':
     parser.add_argument('metagraph_file', type=str, help='Path to the metagraph file')
     parser.add_argument('checkpoint_dir', type=str, help='Path to the checkpoint dir')
     parser.add_argument('--debug_print', dest='debug_print', action='store_true', help='Debug print of predicted steering commands')
+    parser.add_argument('--subscribe_to_compressed', dest='subscribe_to_compressed', action='store_true', help='Use /center_camera/image_color/compressed topic instead of /center_camera/image_color')
+
     args = parser.parse_args()
     def make_predictor():
         model = KomandaModel(
@@ -63,5 +63,5 @@ if __name__ == '__main__':
         steering = predictor(img)
         if args.debug_print: print steering
         return steering
-    node = SteeringNode(make_predictor, process)
+    node = SteeringNode(make_predictor, process, subscribe_to_compressed=args.subscribe_to_compressed)
     rospy.spin()
